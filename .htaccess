@@ -1,3 +1,13 @@
 Options -Indexes
+DirectoryIndex index.php
+
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
 RewriteEngine On
 RewriteRule ^storage(?:/|$) - [F,L]
+
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "DENY"
+Header always set Referrer-Policy "no-referrer"
