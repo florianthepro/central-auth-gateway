@@ -1,0 +1,1 @@
+{"require":{"php":"^8.2","ext-pdo_sqlite":"*","ext-openssl":"*","ext-sodium":"*","ext-ldap":"*","chillerlan/php-qrcode":"^6.0"}}

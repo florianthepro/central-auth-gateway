@@ -1,6 +1,3 @@
 Options -Indexes
-<FilesMatch "^(\.env|config\.php)$">
-    Require all denied
-</FilesMatch>
 RewriteEngine On
 RewriteRule ^storage(?:/|$) - [F,L]
