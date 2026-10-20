@@ -15,46 +15,13 @@ Zur Laufzeit erzeugt `index.php` den geschützten Ordner `storage/` mit SQLite-D
 
 ## Installation auf Debian 13
 
-Der Befehl schreibt Paket- und Downloaddetails nach `/tmp/central-auth-gateway-install.log`. Im Terminal erscheinen nur kurze Statuszeilen. Vorhandene Dateien werden nur nach Eingabe von `ja` gelöscht.
+Einzeiler:
 
 ```bash
-cd / && sudo bash -c '
-set -e
-TARGET="/var/www/html/central-auth-gateway"
-LOG="/tmp/central-auth-gateway-install.log"
-STEP=1
-ok(){ printf "[%02d] [✓] %s\n" "$STEP" "$1"; STEP=$((STEP+1)); }
-fail(){ printf "[%02d] [✗] %s\n" "$STEP" "$1"; printf "Log: %s\n" "$LOG"; exit 1; }
-trap '\''fail "Installation fehlgeschlagen"'\'' ERR
-cd /
-: > "$LOG"
-apt-get update >>"$LOG" 2>&1
-apt-get install -y apache2 php libapache2-mod-php php-sqlite3 php-ldap php-mbstring php-gd phpqrcode curl ca-certificates >>"$LOG" 2>&1
-ok "Abhängigkeiten installiert"
-if [ -d "$TARGET" ] && [ -n "$(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
-  read -rp "$TARGET enthält Daten. Vollständig zurücksetzen? [nein]: " ANSWER
-  ANSWER="${ANSWER:-nein}"
-  [ "$ANSWER" = "ja" ] || { printf "[%02d] [✗] Abgebrochen\n" "$STEP"; exit 1; }
-  rm -rf -- "$TARGET"
-  ok "Alter Stand entfernt"
-fi
-mkdir -p -- "$TARGET"
-curl -fsSL https://github.com/florianthepro/central-auth-gateway/archive/refs/heads/main.tar.gz 2>>"$LOG" | tar -xz --strip-components=1 -C "$TARGET" >>"$LOG" 2>&1
-ok "Repository installiert"
-mkdir -p -- "$TARGET/storage"
-chown -R www-data:www-data -- "$TARGET"
-chmod -R u+rwX,g+rwX,o-rwx -- "$TARGET"
-ok "Rechte gesetzt"
-php -l "$TARGET/index.php" >>"$LOG" 2>&1
-a2enmod rewrite headers >>"$LOG" 2>&1
-apache2ctl configtest >>"$LOG" 2>&1
-systemctl enable --now apache2 >>"$LOG" 2>&1
-systemctl restart apache2 >>"$LOG" 2>&1
-ok "Anwendung geprüft und gestartet"
-'
+curl -fsSL https://raw.githubusercontent.com/florianthepro/central-auth-gateway/main/install.sh | sudo bash
 ```
 
-Erwartete Ausgabe:
+Der Installer fragt über `/dev/tty`, bevor ein vorhandener Stand gelöscht wird. Ausführliche Paket- und Apache-Ausgaben landen in `/tmp/central-auth-gateway-install.log`. Im Terminal erscheinen nur kompakte Statuszeilen:
 
 ```text
 [01] [✓] Abhängigkeiten installiert
@@ -62,6 +29,12 @@ Erwartete Ausgabe:
 [03] [✓] Repository installiert
 [04] [✓] Rechte gesetzt
 [05] [✓] Anwendung geprüft und gestartet
+```
+
+Alternativer Zielordner:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/florianthepro/central-auth-gateway/main/install.sh | sudo TARGET=/opt/central-auth-gateway bash
 ```
 
 ## Ersteinrichtung
