@@ -15,10 +15,10 @@ Zur Laufzeit erzeugt `index.php` den geschützten Ordner `storage/` mit SQLite-D
 
 ## Installation auf Debian 13
 
-Der folgende Befehl installiert Apache, PHP, SQLite, LDAP und `qrencode`. Danach prüft er `/var/www/html/central-auth-gateway`. Falls dort bereits Daten liegen, fragt er vor dem Löschen ausdrücklich nach. Anschließend lädt er den aktuellen Stand aus `florianthepro/central-auth-gateway`, setzt Eigentümer und Rechte und aktiviert die benötigten Apache-Module.
+Der folgende Befehl installiert Apache, PHP, SQLite, LDAP, GD und die Debian-PHP-Bibliothek `phpqrcode`. Danach prüft er `/var/www/html/central-auth-gateway`. Falls dort bereits Daten liegen, fragt er vor dem Löschen ausdrücklich nach. Anschließend lädt er den aktuellen Stand aus `florianthepro/central-auth-gateway`, setzt Eigentümer und Rechte und aktiviert die benötigten Apache-Module.
 
 ```bash
-sudo bash -c 'set -e; TARGET=/var/www/html/central-auth-gateway; apt-get update; apt-get install -y apache2 php libapache2-mod-php php-sqlite3 php-ldap php-mbstring qrencode curl ca-certificates; if [ -e "$TARGET" ] && [ -n "$(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then read -rp "$TARGET enthält bereits Daten. Wirklich vollständig zurücksetzen? [nein]: " ANSWER; ANSWER=${ANSWER:-nein}; [ "$ANSWER" = ja ] || exit 1; rm -rf -- "$TARGET"; fi; mkdir -p -- "$TARGET"; curl -fsSL https://github.com/florianthepro/central-auth-gateway/archive/refs/heads/main.tar.gz | tar -xz --strip-components=1 -C "$TARGET"; mkdir -p -- "$TARGET/storage"; chown -R www-data:www-data -- "$TARGET"; chmod -R u+rwX,g+rwX,o-rwx -- "$TARGET"; a2enmod rewrite headers >/dev/null; systemctl enable --now apache2; systemctl restart apache2; echo "[01] [✓] $TARGET installiert"'
+sudo bash -c 'set -e; TARGET=/var/www/html/central-auth-gateway; apt-get update; apt-get install -y apache2 php libapache2-mod-php php-sqlite3 php-ldap php-mbstring php-gd phpqrcode curl ca-certificates; if [ -e "$TARGET" ] && [ -n "$(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then read -rp "$TARGET enthält bereits Daten. Wirklich vollständig zurücksetzen? [nein]: " ANSWER; ANSWER=${ANSWER:-nein}; [ "$ANSWER" = ja ] || exit 1; rm -rf -- "$TARGET"; fi; mkdir -p -- "$TARGET"; curl -fsSL https://github.com/florianthepro/central-auth-gateway/archive/refs/heads/main.tar.gz | tar -xz --strip-components=1 -C "$TARGET"; mkdir -p -- "$TARGET/storage"; chown -R www-data:www-data -- "$TARGET"; chmod -R u+rwX,g+rwX,o-rwx -- "$TARGET"; a2enmod rewrite headers >/dev/null; systemctl enable --now apache2; systemctl restart apache2; echo "[01] [✓] $TARGET installiert"'
 ```
 
 Danach öffnen:
@@ -72,7 +72,7 @@ Ist `TOTP-Pflicht` gesetzt und noch kein TOTP hinterlegt, zeigt der erste Login:
 - kopierbaren TOTP-Schlüssel,
 - Eingabe des ersten sechsstelligen Codes.
 
-Der QR-Code wird lokal durch `/usr/bin/qrencode` erstellt. Das Secret wird nicht an einen externen Dienst gesendet.
+Der QR-Code wird direkt in PHP mit der Debian-Bibliothek `phpqrcode` erzeugt. Es wird kein Betriebssystembefehl ausgeführt und das Secret wird nicht an einen externen Dienst gesendet.
 
 ## LDAP und Active Directory
 
@@ -116,6 +116,6 @@ Der private Schlüssel wird nach dem Signieren nicht gespeichert. Der öffentlic
 ```bash
 php -l /var/www/html/central-auth-gateway/index.php
 php -m | grep -E "ldap|PDO|sqlite|sodium"
-command -v qrencode
+php -r 'require_once "/usr/share/phpqrcode/qrlib.php"; echo class_exists("QRcode") ? "phpqrcode aktiv\n" : "phpqrcode fehlt\n";'
 sudo -u www-data test -w /var/www/html/central-auth-gateway/storage && echo "storage beschreibbar"
 ```
