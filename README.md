@@ -15,16 +15,53 @@ Zur Laufzeit erzeugt `index.php` den geschützten Ordner `storage/` mit SQLite-D
 
 ## Installation auf Debian 13
 
-Der folgende Befehl installiert Apache, PHP, SQLite, LDAP, GD und die Debian-PHP-Bibliothek `phpqrcode`. Danach prüft er `/var/www/html/central-auth-gateway`. Falls dort bereits Daten liegen, fragt er vor dem Löschen ausdrücklich nach. Anschließend lädt er den aktuellen Stand aus `florianthepro/central-auth-gateway`, setzt Eigentümer und Rechte und aktiviert die benötigten Apache-Module.
+Der Befehl schreibt Paket- und Downloaddetails nach `/tmp/central-auth-gateway-install.log`. Im Terminal erscheinen nur kurze Statuszeilen. Vorhandene Dateien werden nur nach Eingabe von `ja` gelöscht.
 
 ```bash
-cd / && sudo bash -c 'set -e; TARGET=/var/www/html/central-auth-gateway; cd /; apt-get update; apt-get install -y apache2 php libapache2-mod-php php-sqlite3 php-ldap php-mbstring php-gd phpqrcode curl ca-certificates; if [ -d "$TARGET" ] && [ -n "$(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then read -rp "$TARGET enthält bereits Daten. Wirklich vollständig zurücksetzen? [nein]: " ANSWER; ANSWER=${ANSWER:-nein}; [ "$ANSWER" = ja ] || exit 1; rm -rf -- "$TARGET"; fi; mkdir -p -- "$TARGET"; curl -fsSL https://github.com/florianthepro/central-auth-gateway/archive/refs/heads/main.tar.gz | tar -xz --strip-components=1 -C "$TARGET"; mkdir -p -- "$TARGET/storage"; chown -R www-data:www-data -- "$TARGET"; chmod -R u+rwX,g+rwX,o-rwx -- "$TARGET"; php -l "$TARGET/index.php"; a2enmod rewrite headers >/dev/null; apache2ctl configtest; systemctl enable --now apache2; systemctl restart apache2; echo "[01] [✓] $TARGET installiert"'
+cd / && sudo bash -c '
+set -e
+TARGET="/var/www/html/central-auth-gateway"
+LOG="/tmp/central-auth-gateway-install.log"
+STEP=1
+ok(){ printf "[%02d] [✓] %s\n" "$STEP" "$1"; STEP=$((STEP+1)); }
+fail(){ printf "[%02d] [✗] %s\n" "$STEP" "$1"; printf "Log: %s\n" "$LOG"; exit 1; }
+trap '\''fail "Installation fehlgeschlagen"'\'' ERR
+cd /
+: > "$LOG"
+apt-get update >>"$LOG" 2>&1
+apt-get install -y apache2 php libapache2-mod-php php-sqlite3 php-ldap php-mbstring php-gd phpqrcode curl ca-certificates >>"$LOG" 2>&1
+ok "Abhängigkeiten installiert"
+if [ -d "$TARGET" ] && [ -n "$(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+  read -rp "$TARGET enthält Daten. Vollständig zurücksetzen? [nein]: " ANSWER
+  ANSWER="${ANSWER:-nein}"
+  [ "$ANSWER" = "ja" ] || { printf "[%02d] [✗] Abgebrochen\n" "$STEP"; exit 1; }
+  rm -rf -- "$TARGET"
+  ok "Alter Stand entfernt"
+fi
+mkdir -p -- "$TARGET"
+curl -fsSL https://github.com/florianthepro/central-auth-gateway/archive/refs/heads/main.tar.gz 2>>"$LOG" | tar -xz --strip-components=1 -C "$TARGET" >>"$LOG" 2>&1
+ok "Repository installiert"
+mkdir -p -- "$TARGET/storage"
+chown -R www-data:www-data -- "$TARGET"
+chmod -R u+rwX,g+rwX,o-rwx -- "$TARGET"
+ok "Rechte gesetzt"
+php -l "$TARGET/index.php" >>"$LOG" 2>&1
+a2enmod rewrite headers >>"$LOG" 2>&1
+apache2ctl configtest >>"$LOG" 2>&1
+systemctl enable --now apache2 >>"$LOG" 2>&1
+systemctl restart apache2 >>"$LOG" 2>&1
+ok "Anwendung geprüft und gestartet"
+'
 ```
 
-Danach öffnen:
+Erwartete Ausgabe:
 
 ```text
-http://SERVER/central-auth-gateway/
+[01] [✓] Abhängigkeiten installiert
+[02] [✓] Alter Stand entfernt
+[03] [✓] Repository installiert
+[04] [✓] Rechte gesetzt
+[05] [✓] Anwendung geprüft und gestartet
 ```
 
 ## Ersteinrichtung
